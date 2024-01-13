@@ -1,9 +1,11 @@
 const express = require('express');
+const cors = require('cors'); 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 const mongoose = require('mongoose');
 mongoose.connect('mongodb+srv://aulex500:500pauli@cluster0.n9nnpwv.mongodb.net/?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true });
