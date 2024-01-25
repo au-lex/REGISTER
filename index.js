@@ -13,13 +13,15 @@ mongoose.connect('mongodb+srv://aulex500:500pauli@cluster0.n9nnpwv.mongodb.net/?
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
+const serviceAccount = require('./service.json'); // Replace with the path to your service account key
 
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://your-firebase-project-id.firebaseio.com',
+});
 
-app.use(passport.initialize());
-// Load the secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'your-generated-secret';
+
 
 const UserSchema = new mongoose.Schema({
   firstName: String,
@@ -259,68 +261,66 @@ app.get('/users', async (req, res) => {
 
 
 
-passport.use(new GoogleStrategy({
-  clientID: '104678609504-obagptffsmfuplb1jql2eiplh6tusqd5.apps.googleusercontent.com',
-  clientSecret: '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',
-  callbackURL: 'https://authhh.onrender.com/auth/google/callback',
-}, (accessToken, refreshToken, profile, done) => {
-  // Check if the user already exists in your database
-  // If not, you can create a new user based on the Google profile
-  // For simplicity, I'm assuming you have an "email" field in your User model
-  User.findOne({ email: profile.emails[0].value }, (err, user) => {
-    if (err) return done(err);
-    if (user) {
-      // If the user already exists, log them in
-      return done(null, user);
-    } else {
-      // If the user doesn't exist, you can create a new user
-      const newUser = new User({
-        firstName: profile.name.givenName,
-        lastName: profile.name.familyName,
-        email: profile.emails[0].value,
-        // You may want to generate a password or implement a different authentication flow
-        password: 'google-auth-password',
-        verified: true, // Assuming Google already verified the email
-        referralCode: generateReferralCode(),
-        // Add other fields as needed
+
+
+
+
+
+
+// Google Sign-up
+app.post('/signup/google', async (req, res) => {
+  const { idToken } = req.body;
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, uid, displayName, photoURL } = decodedToken;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({
+        firstName: displayName.split(' ')[0],
+        lastName: displayName.split(' ')[1] || '',
+        email,
       });
 
-      newUser.save((err) => {
-        if (err) return done(err);
-        return done(null, newUser);
-      });
+      await user.save();
     }
-  });
-}));
 
+    const token = jwt.sign({ uid, email }, JWT_SECRET, { expiresIn: '1h' });
 
-
-
-
-
-
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
-
-passport.deserializeUser((id, done) => {
-  User.findById(id, (err, user) => {
-    done(err, user);
-  });
-});
-
-// Routes for Google authentication
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    // Successful authentication, redirect to a success page or send a response
-    res.redirect('/success');
+    res.send({ message: 'Google sign-up successful!', token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: 'Internal Server Error' });
   }
-);
+});
+
+// Google Login
+app.post('/login/google', async (req, res) => {
+  const { idToken } = req.body;
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email } = decodedToken;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).send({ message: 'User not found' });
+    }
+
+    const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+
+    res.send({ message: 'Google login successful!', token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+
+
 
 
 
@@ -328,3 +328,5 @@ app.get('/auth/google/callback',
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+
