@@ -236,3 +236,34 @@ app.get('/users', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDwfOvX1oAMnLEQwTkS7lnjGBEWcwm5Jyo",
+  authDomain: "carwash-auth-7f9b1.firebaseapp.com",
+  projectId: "carwash-auth-7f9b1",
+  storageBucket: "carwash-auth-7f9b1.appspot.com",
+  messagingSenderId: "874000893983",
+  appId: "1:874000893983:web:3c93e6ff2d18c4722c2d2a"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
