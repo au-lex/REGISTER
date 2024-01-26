@@ -16,10 +16,7 @@ const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 const serviceAccount = require('./service.json'); // Replace with the path to your service account key
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://your-firebase-project-id.firebaseio.com',
-});
+
 
 
 
@@ -32,7 +29,7 @@ const UserSchema = new mongoose.Schema({
   verified: { type: Boolean, default: false },
   referralCode: String,
   referralLink: String,
-  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Users' },
   referralCount: { type: Number, default: 0 },
   balance: { type: Number, default: 0 }
 });
@@ -251,7 +248,35 @@ app.get('/users', async (req, res) => {
 });
 
 
+app.post('/save-user', async (req, res) => {
+  const {name, email} = req.body;
+    console.log(req.body)
+  try {
+    const userExist = await User.findOne({email:email})
+    if (userExist) {
+      console.log('user already exist')
+      return  res.status(200).json({ success: true });
+      
 
+    }
+    // Save the user details to MongoDB
+    const userPassword ='123456'
+    const newUser = new User({
+      firstName: name,
+  lastName: name,
+  password: userPassword,
+  email,
+  verified:true
+  
+    });
+    await newUser.save();
+    console.log('user created')
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error saving user:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 
 
@@ -268,56 +293,8 @@ app.get('/users', async (req, res) => {
 
 
 // Google Sign-up
-app.post('/signup/google', async (req, res) => {
-  const { idToken } = req.body;
 
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email, uid, displayName, photoURL } = decodedToken;
 
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      user = new User({
-        firstName: displayName.split(' ')[0],
-        lastName: displayName.split(' ')[1] || '',
-        email,
-      });
-
-      await user.save();
-    }
-
-    const token = jwt.sign({ uid, email }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.send({ message: 'Google sign-up successful!', token });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: 'Internal Server Error' });
-  }
-});
-
-// Google Login
-app.post('/login/google', async (req, res) => {
-  const { idToken } = req.body;
-
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email } = decodedToken;
-
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).send({ message: 'User not found' });
-    }
-
-    const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.send({ message: 'Google login successful!', token });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: 'Internal Server Error' });
-  }
-});
 
 
 
