@@ -225,6 +225,37 @@ app.post('/forgot-password', async (req, res) => {
   }
 });
 
+
+app.post('/save-user', async (req, res) => {
+  const {name, email} = req.body;
+    console.log(req.body)
+  try {
+    const userExist = await User.findOne({email:email})
+    if (userExist) {
+      console.log('user already exist')
+      return  res.status(200).json({ success: true });
+      
+
+    }
+    // Save the user details to MongoDB
+    const userPassword ='123456'
+    const newUser = new User({
+      firstName: name,
+  lastName: name,
+  password: userPassword,
+  email,
+  verified:true
+  
+    });
+    await newUser.save();
+    console.log('user created')
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error saving user:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+       
 app.post('/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
