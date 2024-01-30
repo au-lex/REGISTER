@@ -4,10 +4,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.use(cors()); 
-
+app.use(express.urlencoded({ extended: true }
+app.use(cors());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
@@ -185,6 +183,74 @@ app.put('/edit-user/:id', async (req, res) => {
     res.status(500).send({ message: 'Internal Server Error' });
   }
 });
+
+
+
+
+app.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+   
+    if (!user) {
+      console.log(`User with email ${email} not found`);
+      return res.status(404).send({ message: 'User not found' });
+    }
+
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    user.otp = otp;
+    await user.save();
+
+    // Send OTP to user's email using Nodemailer
+    const mailOptions = {
+      from: 'aulex500@gmail.com',
+      to: email,
+      subject: 'OTP for Password Reset',
+      text: `Your OTP for password reset is: ${otp}`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        return res.status(500).send({ message: 'Error sending OTP for password reset' });
+      }
+      console.log('Email sent: ' + info.response);
+      res.send({ message: 'OTP for password reset sent successfully!' });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+app.post('/reset-password', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ email, otp });
+
+    if (!user) {
+      return res.status(400).send({ message: 'Invalid OTP' });
+    }
+
+    // Update user password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.send({ message: 'Password reset successfully!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+
+
+
+
 app.delete('/delete-user/:id', async (req, res) => {
   const userId = req.params.id;
   try {
